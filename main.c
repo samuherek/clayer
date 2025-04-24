@@ -27,7 +27,7 @@ void generate_toy() {
 
     ToyHeader hdr = {{'T', 'O', 'Y', '0'}, width, height, frame_count};
     fwrite(&hdr, sizeof(hdr), 1, file);
-    uint8_t *buf = malloc(16*16);
+    uint8_t *buf = malloc(width*height);
     if (!buf) {
         printf("ERROR: Failed to allocate memory\n");
         return;
@@ -36,10 +36,10 @@ void generate_toy() {
     for (int i = 0; i < frame_count; i++) {
         for (int y = 0; y < height; y++) {
             for (int x = 0; x < width; x++) {
-                buf[y * width + x] = ((x + 1) % 256);
+                buf[y * width + x] = (x % 256);
             }
         }
-        fwrite(&buf, sizeof(buf), 1, file);
+        fwrite(buf, width * height, 1, file);
     }
 
     free(buf);
@@ -67,12 +67,43 @@ void play_toy(char *input) {
         return;
     }
 
-    InitWindow(hdr.width, hdr.height, "Clayer");
+    int frame_size = hdr.width * hdr.height;
+    uint8_t *buf = malloc(frame_size);
+    Color *pixels = malloc(sizeof(Color) * frame_size);
 
+    if (fread(buf, frame_size, 1, file) != 1) {
+        if (feof(file)) {
+            printf("ERROR: Hit end-of-file unexpectedly\n");
+        }
+        if (ferror(file)) {
+            perror("ERROR: fread failed");
+        }
+        printf("ERROR: Unexpected end of file\n");
+        return;
+    }
+
+    uint8_t c;
+    for (int i = 0; i < frame_size; i++) {
+        c = buf[i];
+        pixels[i].r = c;
+        pixels[i].g = c;
+        pixels[i].b = c;
+        pixels[i].a = 255;
+    }
+
+
+    InitWindow(hdr.width, hdr.height, "Clayer");
     while (!WindowShouldClose()) {
         BeginDrawing();
         ClearBackground(BLACK);
-        DrawText("Window initialized successfully!", 10, 10, 20, RAYWHITE);
+
+        for (int y = 0; y < hdr.height; y++) {
+            for (int x = 0; x < hdr.width; x++) {
+                Color pixel = pixels[y * hdr.width + x];
+                DrawPixel(x, y, pixel);
+            }
+        }
+
         EndDrawing();
     }
 
